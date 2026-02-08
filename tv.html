@@ -1,0 +1,475 @@
+<!DOCTYPE html>  
+<html lang="id">  
+<head>  
+    <meta charset="UTF-8">  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">  
+    <title>Scorplay TV</title>  
+    <style>  
+        /* --- CSS DASAR --- */  
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }  
+        body { background-color: #000000; color: white; overflow-x: hidden; width: 100%; height: 100%; }  
+
+        /* Loading Screen */  
+        #loading-screen {  
+            position: fixed; top: 0; left: 0; width: 100%; height: 100vh;  
+            background-color: #000000; z-index: 9999;  
+            display: flex; flex-direction: column; justify-content: center; align-items: center;  
+            transition: opacity 0.5s ease-out;  
+        }  
+        .loader-logo { width: 100px; height: 100px; object-fit: contain; margin-bottom: 20px; animation: pulse 1.5s infinite; }  
+        .loader-text { position: absolute; bottom: 30px; font-size: 1.2rem; text-transform: uppercase; color: #ccc; }  
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }  
+
+        /* Navbar */  
+        .navbar {  
+            display: flex; justify-content: space-between; align-items: center;  
+            padding: 15px 20px; background-color: #111;  
+            border-bottom: 1px solid #333; position: relative; z-index: 1000;  
+        }  
+        .nav-left { display: flex; align-items: center; gap: 15px; }  
+        .nav-logo { width: 40px; height: 40px; object-fit: contain; border-radius: 50%; }  
+        .brand-name { font-size: 1.5rem; font-weight: bold; }  
+        .logout-btn { color: white; text-decoration: none; padding: 8px; }  
+
+        /* Layout Utama */  
+        .main-content {   
+            padding: 20px;   
+            display: flex; justify-content: center; align-items: center;  
+            min-height: 80vh;   
+        }  
+
+        .video-container {   
+            width: 100%; max-width: 1000px;   
+            background-color: #000;   
+            display: flex; justify-content: center; align-items: center;  
+            position: relative;  
+        }  
+
+        /* WRAPPER 16:9 */  
+        .player-wrapper {  
+            position: relative;  
+            width: 100%;  
+            aspect-ratio: 16 / 9;   
+            background: #000;  
+            overflow: hidden;   
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);  
+        }  
+
+        video { width: 100%; height: 100%; display: block; object-fit: cover; background: #000; }  
+
+        /* --- TOMBOL VOLUME KHUSUS --- */  
+        #volume-toggle {  
+            position: absolute;  
+            bottom: 20px;   
+            right: 20px;  
+            z-index: 1005;  
+            background: rgba(0, 0, 0, 0.6);  
+            border: 2px solid rgba(255, 255, 255, 0.3);  
+            border-radius: 50px;  
+            padding: 10px 20px;  
+            color: white;  
+            cursor: pointer;  
+            display: flex;  
+            align-items: center;  
+            gap: 10px;  
+            transition: all 0.3s ease;  
+            backdrop-filter: blur(5px);  
+        }  
+          
+        #volume-toggle:hover {  
+            background: rgba(255, 0, 0, 0.8);  
+            border-color: red;  
+        }  
+
+        .vol-icon { width: 24px; height: 24px; fill: white; }  
+        .vol-text { font-weight: bold; font-size: 14px; text-transform: uppercase; }  
+
+        /* Watermark & Indikator */  
+        .tv-watermark {  
+            display: none; position: absolute; top: 5%; right: 3%; z-index: 1002;  
+            align-items: center; gap: 10px; pointer-events: none;  
+        }  
+        .watermark-logo { width: 7vmin; height: 7vmin; max-width: 45px; max-height: 45px; object-fit: contain; filter: drop-shadow(0px 0px 2px rgba(0,0,0,0.8)); }  
+        .watermark-text { color: white; font-weight: bold; font-size: 2.5vmin; letter-spacing: 1px; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9); }  
+
+        #live-indicator {  
+            position: absolute; top: 5%; left: 3%; background: red; color: white;  
+            padding: 4px 12px; font-size: 2vmin; font-weight: bold; border-radius: 3px;  
+            z-index: 1002; display: none;  
+        }  
+
+        /* Mode Landscape */  
+        @media only screen and (orientation: landscape) {  
+            body, html { overflow: hidden; height: 100vh; background-color: black; }  
+            .navbar { display: none !important; }  
+            .main-content {   
+                padding: 0 !important; margin: 0 !important;   
+                position: fixed; top: 0; left: 0;   
+                width: 100vw; height: 100vh;   
+                background: #000; z-index: 9998;   
+                display: flex; justify-content: center; align-items: center;  
+            }  
+            .video-container { max-width: none !important; width: 100vw !important; height: 100vh !important; border: none !important; }  
+            .player-wrapper {  
+                width: 100%; max-width: 177.78vh; max-height: 100vh;  
+                aspect-ratio: 16 / 9; margin: auto; box-shadow: none;  
+            }  
+            .tv-watermark { display: flex !important; }  
+              
+            /* Di landscape tombol volume agak digeser */  
+            #volume-toggle { bottom: 40px; right: 40px; }  
+        }  
+    </style>
+</head>  
+<body>  
+    <div id="loading-screen">  
+        <img src="1770123686511.png" alt="Logo" class="loader-logo">  
+        <div class="loader-text">scorplay tv</div>  
+    </div>  
+
+    <nav class="navbar">  
+        <div class="nav-left">  
+            <img src="1770123686511.png" alt="Logo" class="nav-logo">  
+            <span class="brand-name">Scorplay TV</span>  
+        </div>  
+        <div class="nav-right">  
+            <a href="index.html" class="logout-btn">  
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M16 17v-3H9v-4h7V7l5 5-5 5M14 2H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-2h-2v2H5V4h9v2h2V4a2 2 0 0 0-2-2z"/></svg>  
+            </a>  
+        </div>  
+    </nav>  
+
+    <div class="main-content">  
+        <div class="video-container">  
+            <div class="player-wrapper">  
+                <div id="live-indicator">LIVE</div>  
+                <video id="tv-player" autoplay muted playsinline></video>  
+
+                <div id="volume-toggle">  
+                    <svg id="icon-mute" class="vol-icon" viewBox="0 0 24 24">  
+                        <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 12c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73 4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>  
+                    </svg>  
+                    <svg id="icon-sound" class="vol-icon" viewBox="0 0 24 24" style="display:none;">  
+                        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>  
+                    </svg>  
+                    <span id="vol-text" class="vol-text">Aktifkan Suara</span>  
+                </div>  
+
+                <div class="tv-watermark">  
+                    <img src="1770123686511.png" alt="Logo TV" class="watermark-logo">  
+                    <span class="watermark-text">Scorplay TV</span>  
+                </div>  
+            </div>  
+        </div>  
+    </div>  
+
+    <script>  
+        // ==========================================  
+        // 1. DATA FILE & JADWAL dengan TANGGAL, BULAN, TAHUN  
+        // ==========================================  
+          
+        const playlistIklan = [  
+            "iklauni.mp4",  
+            "Nutella Ramadan 2026 6S (MW).mp4",  
+            "Iklan Ramadhan 2026 _ Teaser - MARJAN 2026 _Masa Depan_.mp4",  
+            "Iklan Ramadhan 2026 _ KOKO KRUNCH _Sahur Jadi Semangat_.mp4",
+            "Iklan Ramadhan 2026 _ BLUE BAND _Sendok Kebaikan Di bulan Ramadhan_.mp4"  
+        ];  
+
+        // Format: { tanggal: "YYYY-MM-DD HH:MM", file: "nama_file.mp4" }
+        const JADWAL_SIARAN = [  
+            { tanggal: "2026-02-19 03:27", file:  "lv_0_20260208163102.mp4" },    
+            { tanggal: "2026-02-19 03:30", file: "lv_0_20260208163309.mp4" },
+            { tanggal: "2026-02-19 17:30", file: "lv_0_20260208163102.mp4" },
+            { tanggal: "2026-02-19 17:37", file: "lv_0_20260208163309.mp4" },
+            { tanggal: "2026-02-19 19:50", file: "lv_0_20260208163102.mp4" },
+            { tanggal: "2026-02-19 20:00", file: "lv_0_20260208163309.mp4" }
+        ];  
+
+        // ==========================================  
+        // 2. SISTEM VOLUME & PLAYER  
+        // ==========================================  
+
+        const player = document.getElementById('tv-player');  
+        const liveBadge = document.getElementById('live-indicator');  
+          
+        // Elemen Tombol Volume  
+        const volBtn = document.getElementById('volume-toggle');  
+        const iconMute = document.getElementById('icon-mute');  
+        const iconSound = document.getElementById('icon-sound');  
+        const volText = document.getElementById('vol-text');  
+
+        let state = "idle";   
+        let currentProgramData = null;  
+        let finishedSchedules = [];   
+        let currentIklanIndex = 0; // Untuk tracking iklan yang sedang diputar
+          
+        // STATUS PENTING: Apakah user sudah pernah mengaktifkan suara?  
+        let userHasEnabledSound = false;   
+
+        // --- FUNGSI KLIK TOMBOL VOLUME ---  
+        volBtn.addEventListener('click', function() {  
+            // 1. Ubah status  
+            userHasEnabledSound = true;  
+            player.muted = false; // Nyalakan suara  
+
+            // 2. Ubah Tampilan Tombol  
+            iconMute.style.display = 'none';  
+            iconSound.style.display = 'block';  
+            volText.innerText = "Suara Aktif";  
+              
+            // 3. (Opsional) Efek menghilang setelah 3 detik agar bersih  
+            setTimeout(() => {  
+                volBtn.style.opacity = '0'; // Buat transparan pelan-pelan  
+            }, 3000);  
+        });  
+
+        // --- FUNGSI MENJAGA SUARA TETAP NYALA ---  
+        // Setiap kali video dimuat ulang (ganti iklan/film), browser mungkin mereset ke Mute.  
+        // Fungsi ini memaksa Unmute jika user sudah pernah klik tombol.  
+        player.addEventListener('volumechange', () => {  
+             if (userHasEnabledSound && player.muted) {  
+                 player.muted = false; // Paksa Unmute kembali!  
+             }  
+        });  
+          
+        player.addEventListener('play', () => {  
+             if (userHasEnabledSound) {  
+                 player.muted = false; // Pastikan suara nyala saat video baru mulai  
+             }  
+        });  
+
+        // --- LOGIKA PEMUTARAN (DIPERBAIKI) ---  
+
+        function safePlay() {  
+            var playPromise = player.play();  
+            if (playPromise !== undefined) {  
+                playPromise.then(_ => {  
+                    // Berhasil play. Jika user sudah enable sound, pastikan unmute  
+                    if (userHasEnabledSound) player.muted = false;  
+                })  
+                .catch(error => {  
+                    console.error("Error saat play video:", error);  
+                    // Jika diblokir, mute dulu  
+                    player.muted = true;  
+                    player.play().catch(e => {  
+                        console.error("Gagal memutar video:", e);  
+                        // Coba video iklan lain jika gagal  
+                        if (state === "iklan") {  
+                            setTimeout(putarIklanLain, 1000);  
+                        }  
+                    });  
+                });  
+            }  
+        }  
+
+        // Fungsi untuk parsing tanggal dengan format "YYYY-MM-DD HH:MM"
+        function parseDateTime(dateTimeStr) {  
+            const [datePart, timePart] = dateTimeStr.split(' ');  
+            const [year, month, day] = datePart.split('-').map(Number);  
+            const [hours, minutes] = timePart.split(':').map(Number);  
+            return new Date(year, month - 1, day, hours, minutes, 0);  
+        }  
+
+        // Format tanggal menjadi string untuk key
+        function formatDateKey(dateObj) {
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function putarIklan() {  
+            if (state === "iklan" && !player.paused && !player.ended && player.readyState > 2) return;  
+              
+            console.log(">>> Memutar Iklan...");  
+            state = "iklan";  
+            liveBadge.style.display = "none";  
+            currentProgramData = null;  
+              
+            // Pilih iklan berikutnya secara berurutan  
+            let nextIklan = playlistIklan[currentIklanIndex];  
+            currentIklanIndex = (currentIklanIndex + 1) % playlistIklan.length;  
+              
+            console.log("Memutar iklan:", nextIklan);  
+            player.src = nextIklan;  
+            
+            // Tambahkan event listener untuk error loading
+            player.onerror = function() {
+                console.error("Error loading iklan:", nextIklan);
+                // Coba iklan lain jika ini gagal
+                putarIklanLain();
+            };
+            
+            player.onloadeddata = function() {
+                safePlay(); 
+                console.log("Iklan berhasil dimuat:", nextIklan);
+            };
+        }  
+
+        function putarIklanLain() {
+            console.log("Mencoba iklan lain...");
+            // Coba iklan berikutnya
+            currentIklanIndex = (currentIklanIndex + 1) % playlistIklan.length;
+            let nextIklan = playlistIklan[currentIklanIndex];
+            
+            console.log("Mencoba iklan:", nextIklan);
+            player.src = nextIklan;
+            
+            player.onloadeddata = function() {
+                safePlay();
+                console.log("Iklan alternatif berhasil dimuat:", nextIklan);
+            };
+            
+            player.onerror = function() {
+                console.error("Semua iklan gagal dimuat");
+                // Jika semua iklan gagal, tunggu 5 detik lalu coba lagi
+                setTimeout(() => {
+                    currentIklanIndex = 0;
+                    putarIklan();
+                }, 5000);
+            };
+        }
+
+        function putarProgram(scheduleData, offsetSeconds) {  
+            // Jika jadwal ini sudah selesai sebelumnya, langsung putar iklan
+            if (finishedSchedules.includes(scheduleData.tanggal)) {
+                console.log("Program sudah selesai sebelumnya, putar iklan");
+                putarIklan();
+                return;
+            }
+            
+            if (state === "program" && currentProgramData === scheduleData) return;  
+
+            console.log(">>> Masuk Program:", scheduleData.file, "pada", scheduleData.tanggal);  
+            state = "program";  
+            currentProgramData = scheduleData;  
+            liveBadge.style.display = "block";  
+
+            player.src = scheduleData.file;  
+            
+            player.onerror = function() {
+                console.error("Error loading program:", scheduleData.file);
+                // Jika program error, langsung ke iklan
+                finishedSchedules.push(scheduleData.tanggal);
+                state = "idle";
+                putarIklan();
+            };
+              
+            player.onloadedmetadata = function() {  
+                if (offsetSeconds >= player.duration) {  
+                    console.log("Program sudah selesai berdasarkan offset");
+                    finishedSchedules.push(scheduleData.tanggal);  
+                    state = "idle";  
+                    putarIklan(); // Langsung putar iklan setelah program selesai
+                } else {  
+                    player.currentTime = offsetSeconds;  
+                    safePlay();  
+                    console.log("Program diputar dari offset:", offsetSeconds);
+                }  
+            };  
+        }  
+
+        function cekJadwal() {  
+            const now = new Date();  
+            const todayKey = formatDateKey(now);
+            let activeSchedule = null;  
+
+            for (let jadwal of JADWAL_SIARAN) {  
+                // Cek apakah jadwal ini sudah selesai
+                if (finishedSchedules.includes(jadwal.tanggal)) continue;  
+
+                const scheduleDateTime = parseDateTime(jadwal.tanggal);  
+                const diffSeconds = (now - scheduleDateTime) / 1000;   
+
+                // Cek apakah jadwal ini untuk hari ini dan dalam rentang waktu 2 jam
+                const scheduleDateKey = formatDateKey(scheduleDateTime);
+                
+                if (scheduleDateKey === todayKey && diffSeconds >= 0 && diffSeconds < 7200) { // Maksimal 2 jam setelah jadwal
+                    activeSchedule = { data: jadwal, offset: diffSeconds };  
+                    break;
+                }  
+            }  
+
+            if (activeSchedule) {  
+                console.log("Jadwal aktif ditemukan:", activeSchedule.data.tanggal);
+                putarProgram(activeSchedule.data, activeSchedule.offset);  
+            } else {  
+                console.log("Tidak ada jadwal aktif untuk hari ini, putar iklan");
+                putarIklan();  
+            }  
+        }  
+
+        player.addEventListener('error', function(e) {  
+            console.error("Video player error:", e);  
+            state = "idle";  
+            setTimeout(putarIklan, 500);  
+        }, true);  
+
+        player.addEventListener('ended', function() {  
+            console.log("Video ended, state sebelumnya:", state);
+            if (state === "program" && currentProgramData) {  
+                finishedSchedules.push(currentProgramData.tanggal);  
+                console.log("Program selesai:", currentProgramData.tanggal);
+            }  
+            state = "idle";  
+            // Langsung putar iklan setelah film/program selesai
+            setTimeout(putarIklan, 100);  
+        });  
+
+        // Reset finishedSchedules setiap hari (setelah tengah malam)
+        function resetFinishedSchedules() {
+            const now = new Date();
+            const todayKey = formatDateKey(now);
+            
+            // Hapus jadwal yang bukan untuk hari ini
+            finishedSchedules = finishedSchedules.filter(dateTimeStr => {
+                const scheduleDate = parseDateTime(dateTimeStr);
+                const scheduleKey = formatDateKey(scheduleDate);
+                return scheduleKey === todayKey;
+            });
+            
+            console.log("Reset finishedSchedules untuk hari:", todayKey);
+        }
+
+        // Check setiap 30 detik apakah video masih playing
+        setInterval(() => {
+            if (state === "iklan" && (player.paused || player.ended || player.readyState < 3)) {
+                console.log("Video iklan terhenti, restart...");
+                putarIklan();
+            }
+        }, 30000);
+
+        // Check untuk reset schedules setiap jam
+        setInterval(() => {
+            const now = new Date();
+            if (now.getHours() === 0 && now.getMinutes() === 0) {
+                resetFinishedSchedules();
+            }
+        }, 60000); // Check setiap menit
+
+        window.addEventListener('load', () => {  
+            console.log("Halaman loaded, mulai siaran...");
+            resetFinishedSchedules(); // Reset schedules saat pertama kali load
+            cekJadwal();  
+            setInterval(cekJadwal, 1000);   
+
+            setTimeout(() => {  
+                const loader = document.getElementById('loading-screen');  
+                loader.style.opacity = '0';  
+                setTimeout(() => { loader.style.display = 'none'; }, 500);  
+            }, 2500);  
+        });  
+          
+        window.addEventListener("orientationchange", function() {  
+             setTimeout(() => { window.scrollTo(0, 1); }, 200);  
+        });  
+        
+        // Debug: Tampilkan status di console
+        console.log("Scorplay TV Loaded");
+        console.log("Playlist Iklan:", playlistIklan);
+        console.log("Jadwal Siaran:", JADWAL_SIARAN);
+        console.log("Tanggal hari ini:", formatDateKey(new Date()));
+    </script>
+</body>  
+</html>
